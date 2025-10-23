@@ -1,0 +1,12 @@
+notas.txt
+
+# Entorno virtual y .env
+.venv/
+.env
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de migraciones generados automáticamente
+alembic/versions/
