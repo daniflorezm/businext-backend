@@ -18,6 +18,11 @@ app.add_middleware(
 )
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 app.include_router(reservation.router)
 app.include_router(configuration.router)
 app.include_router(product.router)
