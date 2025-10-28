@@ -34,8 +34,6 @@ def get_product_by_id(
     product_id: int, session: SessionDep, business_id: str = Depends(get_current_user)
 ):
     product = session.get(Product, product_id)
-    print("findme")
-    print(product.model_dump())
     if not product or product.business_id != business_id:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
