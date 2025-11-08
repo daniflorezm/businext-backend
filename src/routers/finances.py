@@ -1,6 +1,5 @@
 import calendar
 import datetime
-from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import and_
 from sqlmodel import select
