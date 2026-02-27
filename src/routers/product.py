@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Annotated
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlmodel import select
 from ..database.database import SessionDep
 from ..database.models.product_model import (
@@ -20,9 +21,14 @@ router = APIRouter(
 def get_products(
     session: SessionDep,
     business_id: str = Depends(get_current_user),
+    offset: int = 0,
+    limit: Annotated[int, Query(le=100)] = 100,
 ):
     products = session.exec(
-        select(Product).where(Product.business_id == business_id)
+        select(Product)
+        .where(Product.business_id == business_id)
+        .offset(offset)
+        .limit(limit)
     ).all()
     if not products:
         raise HTTPException(status_code=404, detail="No products found")

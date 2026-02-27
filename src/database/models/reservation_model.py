@@ -6,7 +6,7 @@ from datetime import datetime
 class ReservationBase(SQLModel):
     customer_name: str
     in_charge: str | None
-    reservation_start_date: datetime
+    reservation_start_date: datetime = Field(index=True)
     reservation_end_date: datetime
     time_per_reservation: int  # in minutes
     status: str
@@ -16,7 +16,7 @@ class ReservationBase(SQLModel):
 class Reservation(ReservationBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     business_id: str = Field(index=True, nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
 class ReservationPublic(ReservationBase):
