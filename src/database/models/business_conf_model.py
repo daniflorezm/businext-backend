@@ -12,6 +12,7 @@ class BusinessConfiguration(BusinessConfigurationBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     business_id: str = Field(index=True, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class BusinessConfigurationPublic(BusinessConfigurationBase):

@@ -10,12 +10,13 @@ SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
 
 def get_current_user(authorization: str = Header(...)) -> str:
-    if not authorization.startswith("Bearer "):
+    parts = authorization.split(" ")
+    if len(parts) != 2 or parts[0] != "Bearer":
         raise HTTPException(
             status_code=401, detail="Missing or invalid Authorization header"
         )
 
-    token = authorization.split(" ")[1]
+    token = parts[1]
 
     try:
         payload = jwt.decode(
