@@ -1,7 +1,6 @@
-import calendar
 import datetime
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import and_
+from sqlalchemy import and_, func, case
 from sqlmodel import select
 from ..database.database import SessionDep
 from ..database.models.finances_model import (
@@ -47,36 +46,36 @@ def get_finances_by_id(
 def get_monthly_finances(
     session: SessionDep, year: int, business_id: str = Depends(get_current_user)
 ):
-    balances = []
-    for month in range(1, 13):
-        num_days = calendar.monthrange(year, month)[1]
-        start_date = datetime.date(year, month, 1)
-        end_date = datetime.date(year, month, num_days)
+    start = datetime.date(year, 1, 1)
+    end = datetime.date(year, 12, 31)
 
-        registers_by_month = session.exec(
-            select(Finances).filter(
-                and_(
-                    Finances.created_at >= start_date,
-                    Finances.created_at <= end_date,
-                    Finances.business_id == business_id,
-                )
+    rows = session.exec(
+        select(
+            func.extract("month", Finances.created_at).label("month"),
+            func.sum(
+                case((Finances.type == "INCOME", Finances.amount), else_=0)
+            ).label("incomes"),
+            func.sum(
+                case((Finances.type == "EXPENSE", Finances.amount), else_=0)
+            ).label("expenses"),
+        ).where(
+            and_(
+                Finances.created_at >= start,
+                Finances.created_at <= end,
+                Finances.business_id == business_id,
             )
-        ).all()
-        incomes = sum(
-            register.amount
-            for register in registers_by_month
-            if register.type == "INCOME"
-        )
-        expenses = sum(
-            register.amount
-            for register in registers_by_month
-            if register.type == "EXPENSE"
-        )
+        ).group_by(func.extract("month", Finances.created_at))
+    ).all()
 
-        balance = incomes - expenses
-        balances.append({"month": month, "balance": balance})
+    totals = {int(row.month): (row.incomes or 0, row.expenses or 0) for row in rows}
 
-    return balances
+    return [
+        {
+            "month": month,
+            "balance": totals.get(month, (0, 0))[0] - totals.get(month, (0, 0))[1],
+        }
+        for month in range(1, 13)
+    ]
 
 
 @router.post("/", response_model=FinancesPublic)

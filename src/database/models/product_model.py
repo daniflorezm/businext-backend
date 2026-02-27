@@ -5,13 +5,14 @@ from datetime import datetime
 
 class ProductBase(SQLModel):
     name: str
-    price: float
+    price: float = Field(ge=0)
 
 
 class Product(ProductBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     business_id: str = Field(index=True, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ProductPublic(ProductBase):
@@ -20,4 +21,4 @@ class ProductPublic(ProductBase):
 
 class ProductUpdate(ProductBase):
     name: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[float] = Field(default=None, ge=0)

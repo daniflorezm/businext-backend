@@ -15,7 +15,7 @@ def get_engine():
         database_uri = os.getenv("DATABASE_URI")
         if not database_uri:
             raise RuntimeError("DATABASE_URI environment variable is not set")
-        _engine = create_engine(database_uri, echo=True)
+        _engine = create_engine(database_uri, echo=False)
     return _engine
 
 
