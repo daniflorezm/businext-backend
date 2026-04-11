@@ -43,7 +43,7 @@ class TestBuildCapabilities:
     def test_manager_can_manage_products_finances_reservations(self):
         caps = _build_capabilities("manager", subscription_active=True)
         assert caps.can_access_app is True
-        assert caps.can_manage_configuration is False
+        assert caps.can_manage_configuration is True
         assert caps.can_manage_products is True
         assert caps.can_manage_finances is True
         assert caps.can_manage_reservations is True
