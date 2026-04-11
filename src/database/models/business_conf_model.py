@@ -5,12 +5,11 @@ from datetime import datetime
 
 class BusinessConfigurationBase(SQLModel):
     business_name: str
-    staff: str
 
 
 class BusinessConfiguration(BusinessConfigurationBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    business_id: str = Field(index=True, nullable=False)
+    business_id: str = Field(index=True, nullable=False, unique=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -21,4 +20,3 @@ class BusinessConfigurationPublic(BusinessConfigurationBase):
 
 class BusinessConfigurationUpdate(BusinessConfigurationBase):
     business_name: Optional[str] = None
-    staff: Optional[str] = None

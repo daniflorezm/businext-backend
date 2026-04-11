@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select
 from ..database.database import SessionDep
 from ..database.models.business_conf_model import (
@@ -7,7 +7,7 @@ from ..database.models.business_conf_model import (
     BusinessConfigurationBase,
     BusinessConfigurationUpdate,
 )
-from src.api.auth import get_current_user
+from src.api.auth import AuthContext, require_subscription, require_owner
 
 
 router = APIRouter(
@@ -19,11 +19,11 @@ router = APIRouter(
 
 @router.get("/", response_model=list[BusinessConfigurationPublic])
 def get_configuration(
-    session: SessionDep, business_id: str = Depends(get_current_user)
+    session: SessionDep, auth: AuthContext = Depends(require_subscription)
 ):
     configuration = session.exec(
         select(BusinessConfiguration).where(
-            BusinessConfiguration.business_id == business_id
+            BusinessConfiguration.business_id == auth.business_id
         )
     ).all()
     if not configuration:
@@ -35,10 +35,10 @@ def get_configuration(
 def create_configuration(
     configuration: BusinessConfigurationBase,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_owner),
 ):
     configuration_data = configuration.model_dump()
-    configuration_data["business_id"] = business_id
+    configuration_data["business_id"] = auth.business_id
     config_obj = BusinessConfiguration(**configuration_data)
     session.add(config_obj)
     session.commit()
@@ -51,10 +51,10 @@ def update_configuration(
     configuration_id: int,
     configuration: BusinessConfigurationUpdate,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_owner),
 ):
     configuration_db = session.get(BusinessConfiguration, configuration_id)
-    if not configuration_db or configuration_db.business_id != business_id:
+    if not configuration_db or configuration_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Configuration not found")
     configuration_data = configuration.model_dump(exclude_unset=True)
     configuration_db.sqlmodel_update(configuration_data)
@@ -68,10 +68,10 @@ def update_configuration(
 def delete_configuration(
     configuration_id: int,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_owner),
 ):
     configuration_db = session.get(BusinessConfiguration, configuration_id)
-    if not configuration_db or configuration_db.business_id != business_id:
+    if not configuration_db or configuration_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Configuration not found")
     session.delete(configuration_db)
     session.commit()

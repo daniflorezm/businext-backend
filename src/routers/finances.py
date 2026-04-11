@@ -9,7 +9,7 @@ from ..database.models.finances_model import (
     FinancesBase,
     FinancesUpdate,
 )
-from src.api.auth import get_current_user
+from src.api.auth import AuthContext, require_manager_or_owner
 
 
 router = APIRouter(
@@ -22,10 +22,10 @@ router = APIRouter(
 @router.get("/", response_model=list[FinancesPublic])
 def get_finances(
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_manager_or_owner),
 ):
     finances = session.exec(
-        select(Finances).where(Finances.business_id == business_id)
+        select(Finances).where(Finances.business_id == auth.business_id)
     ).all()
     if not finances:
         raise HTTPException(status_code=404, detail="No finances found")
@@ -34,17 +34,17 @@ def get_finances(
 
 @router.get("/{finances_id}", response_model=FinancesPublic)
 def get_finances_by_id(
-    finances_id: int, session: SessionDep, business_id: str = Depends(get_current_user)
+    finances_id: int, session: SessionDep, auth: AuthContext = Depends(require_manager_or_owner)
 ):
     finances = session.get(Finances, finances_id)
-    if not finances or finances.business_id != business_id:
+    if not finances or finances.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Finances not found")
     return finances
 
 
-@router.get("/anual_finances/{year}")
-def get_monthly_finances(
-    session: SessionDep, year: int, business_id: str = Depends(get_current_user)
+@router.get("/annual_finances/{year}")
+def get_annual_finances(
+    session: SessionDep, year: int, auth: AuthContext = Depends(require_manager_or_owner)
 ):
     start = datetime.date(year, 1, 1)
     end = datetime.date(year, 12, 31)
@@ -62,7 +62,7 @@ def get_monthly_finances(
             and_(
                 Finances.created_at >= start,
                 Finances.created_at <= end,
-                Finances.business_id == business_id,
+                Finances.business_id == auth.business_id,
             )
         ).group_by(func.extract("month", Finances.created_at))
     ).all()
@@ -82,10 +82,10 @@ def get_monthly_finances(
 def create_finances(
     finances: FinancesBase,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_manager_or_owner),
 ):
     finances_data = finances.model_dump()
-    finances_data["business_id"] = business_id
+    finances_data["business_id"] = auth.business_id
     finances_obj = Finances(**finances_data)
     session.add(finances_obj)
     session.commit()
@@ -98,10 +98,10 @@ def update_finances(
     finances_id: int,
     finances: FinancesUpdate,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_manager_or_owner),
 ):
     finances_db = session.get(Finances, finances_id)
-    if not finances_db or finances_db.business_id != business_id:
+    if not finances_db or finances_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Finances not found")
     finances_data = finances.model_dump(exclude_unset=True)
     finances_db.sqlmodel_update(finances_data)
@@ -113,10 +113,10 @@ def update_finances(
 
 @router.delete("/{finances_id}", response_model=dict)
 def delete_finances(
-    finances_id: int, session: SessionDep, business_id: str = Depends(get_current_user)
+    finances_id: int, session: SessionDep, auth: AuthContext = Depends(require_manager_or_owner)
 ):
     finances_db = session.get(Finances, finances_id)
-    if not finances_db or finances_db.business_id != business_id:
+    if not finances_db or finances_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Finances not found")
     session.delete(finances_db)
     session.commit()
