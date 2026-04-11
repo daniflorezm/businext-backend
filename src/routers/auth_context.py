@@ -1,5 +1,3 @@
-from dataclasses import asdict
-
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlmodel import select
