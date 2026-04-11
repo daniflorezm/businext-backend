@@ -6,6 +6,8 @@ from datetime import datetime
 class ProductBase(SQLModel):
     name: str
     price: float = Field(ge=0)
+    type: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class Product(ProductBase, table=True):
@@ -22,3 +24,5 @@ class ProductPublic(ProductBase):
 class ProductUpdate(ProductBase):
     name: Optional[str] = None
     price: Optional[float] = Field(default=None, ge=0)
+    type: Optional[str] = None
+    image_url: Optional[str] = None

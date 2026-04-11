@@ -8,7 +8,7 @@ from ..database.models.product_model import (
     ProductBase,
     ProductUpdate,
 )
-from src.api.auth import get_current_user
+from src.api.auth import AuthContext, require_subscription, require_manager_or_owner
 
 router = APIRouter(
     prefix="/products",
@@ -20,13 +20,13 @@ router = APIRouter(
 @router.get("/", response_model=list[ProductPublic])
 def get_products(
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_subscription),
     offset: int = 0,
     limit: Annotated[int, Query(le=100)] = 100,
 ):
     products = session.exec(
         select(Product)
-        .where(Product.business_id == business_id)
+        .where(Product.business_id == auth.business_id)
         .offset(offset)
         .limit(limit)
     ).all()
@@ -37,10 +37,10 @@ def get_products(
 
 @router.get("/{product_id}", response_model=ProductPublic)
 def get_product_by_id(
-    product_id: int, session: SessionDep, business_id: str = Depends(get_current_user)
+    product_id: int, session: SessionDep, auth: AuthContext = Depends(require_subscription)
 ):
     product = session.get(Product, product_id)
-    if not product or product.business_id != business_id:
+    if not product or product.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
@@ -49,10 +49,10 @@ def get_product_by_id(
 def create_product(
     product: ProductBase,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_manager_or_owner),
 ):
     product_data = product.model_dump()
-    product_data["business_id"] = business_id
+    product_data["business_id"] = auth.business_id
     product_obj = Product(**product_data)
     session.add(product_obj)
     session.commit()
@@ -65,10 +65,10 @@ def update_product(
     product_id: int,
     product: ProductUpdate,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_manager_or_owner),
 ):
     product_db = session.get(Product, product_id)
-    if not product_db or product_db.business_id != business_id:
+    if not product_db or product_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Product not found")
     product_data = product.model_dump(exclude_unset=True)
     product_db.sqlmodel_update(product_data)
@@ -80,10 +80,10 @@ def update_product(
 
 @router.delete("/{product_id}")
 def delete_product(
-    product_id: int, session: SessionDep, business_id: str = Depends(get_current_user)
+    product_id: int, session: SessionDep, auth: AuthContext = Depends(require_manager_or_owner)
 ):
     product = session.get(Product, product_id)
-    if not product or product.business_id != business_id:
+    if not product or product.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Product not found")
     session.delete(product)
     session.commit()

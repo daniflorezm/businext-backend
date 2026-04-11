@@ -8,7 +8,7 @@ from ..database.models.reservation_model import (
     ReservationBase,
     ReservationUpdate,
 )
-from src.api.auth import get_current_user
+from src.api.auth import AuthContext, require_subscription
 
 router = APIRouter(
     prefix="/reservations",
@@ -20,13 +20,13 @@ router = APIRouter(
 @router.get("/", response_model=list[ReservationPublic])
 def get_reservations(
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_subscription),
     offset: int = 0,
     limit: Annotated[int, Query(le=100)] = 100,
 ):
     reservations = session.exec(
         select(Reservation)
-        .where(Reservation.business_id == business_id)
+        .where(Reservation.business_id == auth.business_id)
         .offset(offset)
         .limit(limit)
     ).all()
@@ -39,10 +39,10 @@ def get_reservations(
 def get_reservation_by_id(
     reservation_id: int,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_subscription),
 ):
     reservation = session.get(Reservation, reservation_id)
-    if not reservation or reservation.business_id != business_id:
+    if not reservation or reservation.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation
 
@@ -51,10 +51,10 @@ def get_reservation_by_id(
 def create_reservation(
     reservation: ReservationBase,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_subscription),
 ):
     reservation_data = reservation.model_dump()
-    reservation_data["business_id"] = business_id
+    reservation_data["business_id"] = auth.business_id
     reservation_obj = Reservation(**reservation_data)
     session.add(reservation_obj)
     session.commit()
@@ -67,10 +67,10 @@ def update_reservation(
     reservation_id: int,
     reservation: ReservationUpdate,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_subscription),
 ):
     reservation_db = session.get(Reservation, reservation_id)
-    if not reservation_db or reservation_db.business_id != business_id:
+    if not reservation_db or reservation_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
     reservation_data = reservation.model_dump(exclude_unset=True)
     reservation_db.sqlmodel_update(reservation_data)
@@ -84,10 +84,10 @@ def update_reservation(
 def delete_reservation(
     reservation_id: int,
     session: SessionDep,
-    business_id: str = Depends(get_current_user),
+    auth: AuthContext = Depends(require_subscription),
 ):
     reservation = session.get(Reservation, reservation_id)
-    if not reservation or reservation.business_id != business_id:
+    if not reservation or reservation.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
     session.delete(reservation)
     session.commit()
