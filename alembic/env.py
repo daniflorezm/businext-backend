@@ -9,6 +9,8 @@ from src.database.models import (
     finances_model,
     product_model,
     reservation_model,
+    google_business_profile_model,
+    google_review_model,
 )
 from sqlmodel import SQLModel
 
