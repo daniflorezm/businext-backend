@@ -8,7 +8,6 @@ from ..database.database import SessionDep
 from ..database.models.google_business_profile_model import (
     GoogleBusinessProfile,
     GoogleBusinessProfilePublic,
-    GoogleBusinessProfileUpdate,
 )
 from ..database.models.google_review_model import (
     GoogleReview,
@@ -20,7 +19,6 @@ from src.services.outscraper_service import (
     fetch_business_and_reviews,
     OutscraperError,
     OutscraperQueuedError,
-    OutscraperNoResultsError,
 )
 from src.services.ai_service import (
     generate_review_response,
@@ -174,7 +172,7 @@ def create_profile(
     # Persist reviews
     reviews_data = place_data.get("reviews_data", [])
     if reviews_data:
-        new_count = _persist_reviews(session, profile, reviews_data)
+        _persist_reviews(session, profile, reviews_data)
         # Update last_review_timestamp
         max_ts = max(r.get("review_timestamp", 0) for r in reviews_data)
         profile.last_review_timestamp = max_ts
