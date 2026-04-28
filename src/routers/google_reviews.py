@@ -213,6 +213,16 @@ def sync_reviews(
     if not profile:
         raise HTTPException(status_code=404, detail="No se encontró un perfil de Google vinculado.")
 
+    # Rate limit: allow sync only once per week
+    if profile.last_sync_at:
+        days_since_sync = (datetime.now(timezone.utc) - profile.last_sync_at.replace(tzinfo=timezone.utc)).days
+        if days_since_sync < 7:
+            days_remaining = 7 - days_since_sync
+            raise HTTPException(
+                status_code=429,
+                detail=f"Solo puedes sincronizar las reseñas una vez por semana. Podrás volver a sincronizar en {days_remaining} día{'s' if days_remaining != 1 else ''}.",
+            )
+
     try:
         place_data = fetch_business_and_reviews(
             profile.google_id,
