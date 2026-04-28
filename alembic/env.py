@@ -11,6 +11,8 @@ from src.database.models import (
     reservation_model,
     google_business_profile_model,
     google_review_model,
+    working_hours_model,
+    weekly_summary_model,
 )
 from sqlmodel import SQLModel
 

@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlmodel import select
@@ -8,6 +9,8 @@ from ..database.models.reservation_model import (
     ReservationBase,
     ReservationUpdate,
 )
+from ..database.models.member_model import BusinessMember
+from ..database.models.profile_model import Profile
 from src.api.auth import AuthContext, require_subscription
 
 router = APIRouter(
@@ -47,6 +50,35 @@ def get_reservation_by_id(
     return reservation
 
 
+FIXED_DURATION_MINUTES = 30
+
+
+def _get_valid_in_charge_names(session, business_id: str) -> set[str]:
+    """Return display names of the owner + all active members for a business."""
+    # Owner's display name (business_id == owner's user_id)
+    owner_profile = session.get(Profile, business_id)
+    names: set[str] = set()
+    if owner_profile and owner_profile.display_name:
+        names.add(owner_profile.display_name)
+
+    # Active members' display names
+    members = session.exec(
+        select(BusinessMember)
+        .where(BusinessMember.business_id == business_id)
+        .where(BusinessMember.status == "active")
+    ).all()
+    member_ids = [m.member_user_id for m in members]
+    if member_ids:
+        profiles = session.exec(
+            select(Profile).where(Profile.id.in_(member_ids))
+        ).all()
+        for p in profiles:
+            if p.display_name:
+                names.add(p.display_name)
+
+    return names
+
+
 @router.post("/", response_model=ReservationPublic)
 def create_reservation(
     reservation: ReservationBase,
@@ -55,6 +87,18 @@ def create_reservation(
 ):
     reservation_data = reservation.model_dump()
     reservation_data["business_id"] = auth.business_id
+    reservation_data["time_per_reservation"] = FIXED_DURATION_MINUTES
+    reservation_data["reservation_end_date"] = reservation.reservation_start_date + timedelta(minutes=FIXED_DURATION_MINUTES)
+
+    # Validate in_charge against active team members
+    if reservation.in_charge:
+        valid_names = _get_valid_in_charge_names(session, auth.business_id)
+        if reservation.in_charge not in valid_names:
+            raise HTTPException(
+                status_code=422,
+                detail=f"El encargado '{reservation.in_charge}' no es un miembro activo del negocio",
+            )
+
     reservation_obj = Reservation(**reservation_data)
     session.add(reservation_obj)
     session.commit()
@@ -72,7 +116,23 @@ def update_reservation(
     reservation_db = session.get(Reservation, reservation_id)
     if not reservation_db or reservation_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
+
+    # Block modifications on completed reservations (except completing a pending one)
+    if reservation_db.status == "COMPLETED":
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede modificar una reserva ya completada",
+        )
+
+    # Prevent double-completing: only allow PENDING → COMPLETED
     reservation_data = reservation.model_dump(exclude_unset=True)
+    new_status = reservation_data.get("status")
+    if new_status == "COMPLETED" and reservation_db.status != "PENDING":
+        raise HTTPException(
+            status_code=409,
+            detail="Solo se pueden completar reservas pendientes",
+        )
+
     reservation_db.sqlmodel_update(reservation_data)
     session.add(reservation_db)
     session.commit()
@@ -89,6 +149,13 @@ def delete_reservation(
     reservation = session.get(Reservation, reservation_id)
     if not reservation or reservation.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "COMPLETED":
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar una reserva ya completada",
+        )
+
     session.delete(reservation)
     session.commit()
     return {"Reservation deleted": True}
