@@ -1,6 +1,5 @@
 from datetime import timedelta, datetime, timezone
-from typing import Annotated
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import select, or_, and_
 from ..database.database import SessionDep
 from ..database.models.reservation_model import (
