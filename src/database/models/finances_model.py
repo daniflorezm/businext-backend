@@ -9,6 +9,7 @@ class FinancesBase(SQLModel):
     type: str
     creator: str
     reservation_id: Optional[int]
+    customer_name: Optional[str] = None
 
 
 class Finances(FinancesBase, table=True):
@@ -16,12 +17,14 @@ class Finances(FinancesBase, table=True):
     business_id: str = Field(index=True, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     reservation_id: Optional[int] = Field(default=None, foreign_key="reservation.id")
+    customer_name: Optional[str] = Field(default=None)
 
 
 class FinancesPublic(FinancesBase):
     id: int
     created_at: datetime
     reservation_id: Optional[int]
+    customer_name: Optional[str] = None
 
 
 class FinancesUpdate(FinancesBase):
@@ -29,3 +32,4 @@ class FinancesUpdate(FinancesBase):
     amount: Optional[float] = None
     type: Optional[str] = None
     creator: Optional[str] = None
+    customer_name: Optional[str] = None

@@ -18,10 +18,11 @@ def get_engine():
         _engine = create_engine(
             database_uri,
             echo=False,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=5,
+            max_overflow=8,
             pool_timeout=30,
             pool_pre_ping=True,
+            pool_recycle=300,
         )
     return _engine
 

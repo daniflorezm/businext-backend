@@ -1,7 +1,6 @@
-from datetime import timedelta
-from typing import Annotated
-from fastapi import APIRouter, HTTPException, Query, Depends
-from sqlmodel import select
+from datetime import timedelta, datetime, timezone
+from fastapi import APIRouter, HTTPException, Depends
+from sqlmodel import select, or_, and_
 from ..database.database import SessionDep
 from ..database.models.reservation_model import (
     Reservation,
@@ -24,14 +23,28 @@ router = APIRouter(
 def get_reservations(
     session: SessionDep,
     auth: AuthContext = Depends(require_subscription),
-    offset: int = 0,
-    limit: Annotated[int, Query(le=100)] = 100,
 ):
+    """Return PENDING reservations from the last 7 days onward + COMPLETED from today."""
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = today_start - timedelta(days=7)
+
     reservations = session.exec(
         select(Reservation)
         .where(Reservation.business_id == auth.business_id)
-        .offset(offset)
-        .limit(limit)
+        .where(
+            or_(
+                and_(
+                    Reservation.status == "PENDING",
+                    Reservation.reservation_start_date >= week_ago,
+                ),
+                and_(
+                    Reservation.status == "COMPLETED",
+                    Reservation.reservation_start_date >= today_start,
+                ),
+            )
+        )
+        .order_by(Reservation.reservation_start_date.desc())
     ).all()
     if not reservations:
         raise HTTPException(status_code=404, detail="No reservations found")
