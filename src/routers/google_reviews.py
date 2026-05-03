@@ -226,7 +226,7 @@ def sync_reviews(
     try:
         place_data = fetch_business_and_reviews(
             profile.google_id,
-            reviews_limit=20,
+            reviews_limit=100,
             cutoff=profile.last_review_timestamp,
         )
     except OutscraperQueuedError as e:

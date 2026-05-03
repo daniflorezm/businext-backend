@@ -184,7 +184,7 @@ def generate_weekly_summary(
             day_income_map[name] = daily_income[i]
 
     best_day = max(day_income_map, key=day_income_map.get, default="N/A") if day_income_map else "N/A"  # type: ignore[arg-type]
-    worst_day = min(day_income_map, key=day_income_map.get, default="N/A") if day_income_map else "N/A"  # type: ignore[arg-type]
+    worst_day = min(day_income_map, key=day_income_map.get, default="N/A") if len(day_income_map) > 1 else "N/A"  # type: ignore[arg-type]
 
     # Top service
     service_count: dict[str, int] = {}

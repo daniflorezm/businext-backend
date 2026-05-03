@@ -26,7 +26,7 @@ def extract_google_id(url: str) -> str | None:
 
 def fetch_business_and_reviews(
     google_id: str,
-    reviews_limit: int = 20,
+    reviews_limit: int = 100,
     cutoff: int = 0,
 ) -> dict:
     """Fetch business info and reviews from Outscraper API.
