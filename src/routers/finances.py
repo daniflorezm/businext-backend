@@ -9,7 +9,7 @@ from ..database.models.finances_model import (
     FinancesBase,
     FinancesUpdate,
 )
-from src.api.auth import AuthContext, require_manager_or_owner
+from src.api.auth import AuthContext, require_manager_or_owner, require_subscription
 
 
 router = APIRouter(
@@ -82,7 +82,7 @@ def get_annual_finances(
 def create_finances(
     finances: FinancesBase,
     session: SessionDep,
-    auth: AuthContext = Depends(require_manager_or_owner),
+    auth: AuthContext = Depends(require_subscription),
 ):
     finances_data = finances.model_dump()
     finances_data["business_id"] = auth.business_id
