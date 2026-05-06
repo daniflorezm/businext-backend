@@ -118,6 +118,11 @@ def delete_finances(
     finances_db = session.get(Finances, finances_id)
     if not finances_db or finances_db.business_id != auth.business_id:
         raise HTTPException(status_code=404, detail="Finances not found")
+    if finances_db.reservation_id is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar un registro vinculado a una reserva. Revierte la reserva primero.",
+        )
     session.delete(finances_db)
     session.commit()
     return {"Finances record deleted": True}

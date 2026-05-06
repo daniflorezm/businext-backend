@@ -8,9 +8,10 @@ from ..database.models.reservation_model import (
     ReservationBase,
     ReservationUpdate,
 )
+from ..database.models.finances_model import Finances
 from ..database.models.member_model import BusinessMember
 from ..database.models.profile_model import Profile
-from src.api.auth import AuthContext, require_subscription
+from src.api.auth import AuthContext, require_subscription, require_owner
 
 router = APIRouter(
     prefix="/reservations",
@@ -172,3 +173,34 @@ def delete_reservation(
     session.delete(reservation)
     session.commit()
     return {"Reservation deleted": True}
+
+
+@router.post("/{reservation_id}/revert", response_model=ReservationPublic)
+def revert_reservation(
+    reservation_id: int,
+    session: SessionDep,
+    auth: AuthContext = Depends(require_owner),
+):
+    """Revert a COMPLETED reservation back to PENDING and delete its linked finance."""
+    reservation = session.get(Reservation, reservation_id)
+    if not reservation or reservation.business_id != auth.business_id:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status != "COMPLETED":
+        raise HTTPException(
+            status_code=409,
+            detail="Solo se pueden revertir reservas completadas",
+        )
+
+    # Delete linked finance record
+    linked_finance = session.exec(
+        select(Finances).where(Finances.reservation_id == reservation_id)
+    ).first()
+    if linked_finance:
+        session.delete(linked_finance)
+
+    reservation.status = "PENDING"
+    session.add(reservation)
+    session.commit()
+    session.refresh(reservation)
+    return reservation
